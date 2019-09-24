@@ -69,46 +69,36 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-
-volatile uint16_t adc_value;
-volatile uint32_t adc_avg_value;
-volatile uint16_t counter;
-
+volatile uint16_t adc_value;// АЦП результат полученный из DMA
+volatile uint32_t adc_avg_value;// среднее значение АЦП
+volatile uint16_t counter;// счётчик хранит сколько раз опрашивался АЦП
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-
-    if(hadc->Instance == ADC1) //check if the interrupt comes from ACD1
+	if(hadc->Instance == ADC1) //check if the interrupt comes from ACD1
     {
     	adc_avg_value += adc_value;
     	counter++;
     }
-
 }
-
 char str[20];
-#define AVGSLOPE 4.3 // ����� �����  ��� ��������� ����������� �� ������
+#define AVGSLOPE 4.3 // милли вольт  при изменении температуры на градус
 //average slope of T-V chart according to datasheet pg 79
 //(min is 4 mV/C, max 4.6, default (4.3): typical)
-#define V25 1.43 // ����� �� ������������� ������� ��� ����������� 25 �C
+#define V25 1.43 // вольт на температурном датчике при температуре 25 °C
 //voltage of temperature sensor at 25C according to datasheet pg 79 (in V)
 //(min is 1.34, max is 1.52, default(1.43): typical)
-
-
+uint16_t temperature;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	uint16_t temperature;
-        if(htim->Instance == TIM1) //check if the interrupt comes from TIM1
-        {
-        	adc_avg_value /= counter;// �������� ������� �������� ���
-        	temperature = (uint16_t)(((V25 * 1000.0 - (float)adc_avg_value * 0.8) / AVGSLOPE) + 25.0);
-        	sprintf(str, "T=%d C, ADC=%lu, counter=%d \r\n", temperature, adc_avg_value,counter);
-        	HAL_UART_Transmit_IT(&huart1,(uint8_t*) str, strlen(str));
-        	adc_avg_value = counter = 0;
-        }
-
+	if(htim->Instance == TIM1) //check if the interrupt comes from TIM1
+	{
+		adc_avg_value /= counter;// получаем среднее значение ацп
+		temperature = (uint16_t)(((V25 * 1000.0 - (float)adc_avg_value * 0.8) / AVGSLOPE) + 25.0);// расчёт температуры
+		sprintf(str, "T=%d C, ADC=%lu, counter=%d \r\n", temperature, adc_avg_value,counter);
+		HAL_UART_Transmit_IT(&huart1,(uint8_t*) str, strlen(str));
+		adc_avg_value = counter = 0;// обязательный сброс
+	}
 }
-
 /* USER CODE END 0 */
 
 /**
@@ -146,13 +136,10 @@ int main(void)
   MX_TIM4_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
-  HAL_ADCEx_Calibration_Start(&hadc1);
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc_value, 1); // �������� ��� DMA
-  HAL_TIM_OC_Start(&htim4, TIM_CHANNEL_4);
-
-  HAL_TIM_Base_Start_IT(&htim1);
-
+  HAL_ADCEx_Calibration_Start(&hadc1);// калибровка АЦП
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc_value, 1); // стартуем АЦП DMA
+  HAL_TIM_OC_Start(&htim4, TIM_CHANNEL_4); // старт таймера TIM4 который запускает АЦП 50 раз в секунду
+  HAL_TIM_Base_Start_IT(&htim1); // старт таймера  TIM1 который один раз в секунду запускает расчёт температуры и выводит результат в UART
   HAL_UART_Transmit_IT(&huart1,(uint8_t*) "start\n", 6);
   /* USER CODE END 2 */
 
