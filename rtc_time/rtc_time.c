@@ -5,12 +5,9 @@
  *      Author: zan
  */
 #include <stm32f1xx.h>
-
 #include "rtc_time.h"
-
 #include "string.h" // for strncpy
 #include "stdlib.h" // for atoi
-
 
 void  RTC_Init()//Инициализация RTC
 {
@@ -35,7 +32,6 @@ void  RTC_Init()//Инициализация RTC
   }
 }
 
-
 #define SEC_A_DAY 86400
 
 void RTC_CounterToTime (unsigned long timer, rtc_time_t * unix_time)
@@ -46,7 +42,6 @@ void RTC_CounterToTime (unsigned long timer, rtc_time_t * unix_time)
 	unix_time->minute=(days%3600)/60;
 	unix_time->second=(days%3600)%60;
 }
-
 
 void RTC_CounterToDate (unsigned long timer, rtc_time_t * unix_time)
 {
@@ -67,8 +62,6 @@ void RTC_CounterToDate (unsigned long timer, rtc_time_t * unix_time)
 	unix_time->month=d+3-12*(d/10);
 	unix_time->year=100*b+c-4800+(d/10);
 }
-
-
 
 unsigned long RTC_TimeToCounter (rtc_time_t * unix_time)
 {
@@ -108,7 +101,6 @@ void RTC_SetCounter_(uint32_t count)//Записать новое значени
 void RTC_SetTime(rtc_time_t * time)
 {
 	RTC_SetCounter_(RTC_TimeToCounter(time));
-
 }
 
 void RTC_GetTime(rtc_time_t * time)
@@ -129,9 +121,20 @@ void rtc_substr(char * str, char * sub, int from, int to) {
 }
 
 // проверка на правильность формата времени
-void rtc_check_time_format(char * time_str)
+uint8_t rtc_check_time_format(char * time_str)
 {
-
+	uint8_t i;
+	char num;
+	for (i = 2; i < 16; i+=3)
+	{
+		num = time_str[i];
+		if(num < '0' || num > '9')
+			return 0;
+		num = time_str[i+1];
+		if(num < '0' || num > '9')
+			return 0;
+	}
+	return 1;
 }
 
 /**  date save from string 2019-02-28,03:14
@@ -139,16 +142,16 @@ void rtc_check_time_format(char * time_str)
  * */
 uint8_t RTC_SetTimeFromString(char * time_str)
 {
-	 //TODO добавить проверку на правильность формата времени
-	 //rtc_check_time_format(time_str);
+	if(rtc_check_time_format(time_str) != 1)
+		return 0;
 
 	 char c[4];
 	 char * sub = (char*)c;
 
 	 rtc_time_t t= {0};
 
-	 rtc_substr(time_str,sub,0, 4);
-	t.year = atoi(sub);
+	rtc_substr(time_str,sub,2, 4);// от 0 до 4 почему то не вырезало символы !?
+	t.year = 2000 + atoi(sub);
 
 	rtc_substr(time_str,sub,5, 7);
 	t.month = atoi(sub);
