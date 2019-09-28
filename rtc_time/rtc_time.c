@@ -145,12 +145,11 @@ uint8_t RTC_SetTimeFromString(char * time_str)
 	if(rtc_check_time_format(time_str) != 1)
 		return 0;
 
-	 char c[4];
-	 char * sub = (char*)c;
+	 char sub[3];// в массив будет копироваться по два символа + конец строки /0
 
 	 rtc_time_t t= {0};
 
-	rtc_substr(time_str,sub,2, 4);// от 0 до 4 почему то не вырезало символы !?
+	rtc_substr(time_str,sub,2, 4);// от 0 до 4 почему то не вырезало символы !? (потому что для 4-х символов надо было char c[5];)
 	t.year = 2000 + atoi(sub);
 
 	rtc_substr(time_str,sub,5, 7);
